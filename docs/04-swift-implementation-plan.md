@@ -372,7 +372,7 @@ Lo operable-sin-release vive en Firebase Remote Config; lo secreto, jamás. Resu
 | Dato | Dónde | Por qué |
 |---|---|---|
 | System prompt base de Anima, **uno por provider** (`system_prompt_anthropic`, `_openai`, `_google`, `_on_device` — parámetros planos: texto largo editable sin escapes) | Remote Config | El "prompt propio del harness" (análogo al de OpenClaw); no es secreto |
-| `provider_config` (JSON): por provider, `api` (base_url, version, **betas**) + `routes` (el dial §4.7 por TurnClass) | Remote Config | Betas y model IDs rotables sin release |
+| `provider_config` (JSON): por provider, `api` (base_url, version, **betas** comunes, `auth_betas` y `auth_system_prefix` por modo de auth) + `routes` (el dial §4.7 por TurnClass) | Remote Config | Betas, model IDs y el bloque de prefijo OAuth rotables sin release |
 | API key / OAuth token del usuario | **Keychain, siempre** | RC es legible por todo cliente — jamás secretos ahí |
 | SOUL del usuario (quién quiere que sea su agente) | SelfModel local (GRDB) | Nace en el onboarding ("Birth") y evoluciona con la plasticidad |
 
@@ -384,6 +384,15 @@ Lo operable-sin-release vive en Firebase Remote Config; lo secreto, jamás. Resu
 3. `GoogleService-Info.plist` real en `App/` y **gitignored** (repo público — invita abuso de cuota); template versionado. Opcional recomendado: **App Check** (App Attest).
 4. Niveles de prompt resultantes: **base (RC, prefijo cacheado) → SOUL del usuario (SelfModel, mid-conversation system §4.5) → conversación (user messages)** — la separación soul-vs-system de OpenClaw, cache-aware.
 5. v1 implementa el provider `anthropic`; los demás quedan configurables desde ya (el onboarding del design system ofrece los 4).
+6. **Anthropic tiene DOS modos de auth** y el request cambia en tres cosas, todas en config. El modo se detecta por el prefijo del token en Keychain (`AuthMode.detect`):
+
+| | `api_key` (Console, `sk-ant-api03…`) | `oauth` (suscripción Claude, `sk-ant-oat01…`) |
+|---|---|---|
+| Header de auth | `x-api-key: <key>` | `Authorization: Bearer <token>` |
+| Betas extra (`auth_betas`) | — | `oauth-2025-04-20` + `claude-code-20250219` |
+| System prompt (`auth_system_prefix`) | solo el base de Anima | el array `system` DEBE abrir con el bloque `"You are Claude Code, Anthropic's official CLI for Claude."` (con `cache_control`) y después el base de Anima |
+
+   El RequestBuilder compone `system` con `ProviderAPIConfig.systemBlocks(for:base:)` y los headers con `effectiveBetas(for:)`. Nada de esto vive en código fuente: prefijo y betas son configuración (rotan sin release). En modo `api_key` el dial Opus/Haiku es económicamente relevante (pago por token); en `oauth` el plan es fijo y el dial pesa menos.
 
 ---
 
