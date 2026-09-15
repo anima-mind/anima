@@ -55,6 +55,7 @@ Cada pieza del stack sirve a un subsistema concreto del spec:
 | **Web search/fetch server-side de Anthropic** | B.6 aferente | Se declara en el array `tools`; cero código cliente, cero parsing de HTML. Maneja `pause_turn`. |
 | **UserNotifications** (`UNUserNotificationCenter`) | B.4 approvals + B.5 escalate + B.8 propuestas | El canal proactivo hacia el dueño con la app cerrada: PendingOtherApproval, escalateToOther y las propuestas del deseo llegan como notificación local. Sin esto, el DesireEngine es mudo. |
 | **Betas de plataforma**: `compact-2026-01-12`, `context-management-2025-06-27` | B.2 relieve | Compaction y tool-result clearing delegados al servidor — el dial de §A.3 aplicado: modelo fuerte + plataforma fuerte → harness delgado en esa capa. |
+| **Firebase Remote Config** | §4.8 config remota | System prompt base POR PROVIDER, headers/betas de API y rutas del dial editables sin release. Solo config no-secreta; secretos → Keychain. AnimaKit no conoce Firebase (protocol + impl en app shell). |
 
 **Dependencias de terceros: solo GRDB** (SPM). Todo lo demás es sistema. Esto es deliberado: el harness es lógica propia (§B preámbulo — "el harness posee la lógica; el único estado pesado externo es el brain").
 
@@ -364,6 +365,26 @@ struct ModelRouter {
 - `ProviderProfile` del spec: con Opus, `delegates = {planning, decomposition, self_verification, tool_selection, long_reasoning}` y `scaffolds = {memory_curation}` (el régimen de reconsolidación es del harness siempre — invariante). Si mañana el dial baja a un modelo local de 8B, `scaffolds` crece — los contratos no cambian.
 - Los invariantes que **no** se delegan jamás (§A.3): permisos, presupuestos, clasificación de errores, RealRegister.
 
+### 4.8 Config remota (Firebase Remote Config)
+
+Lo operable-sin-release vive en Firebase Remote Config; lo secreto, jamás. Resuelve además la pregunta abierta #7: los version strings de betas **rotan** — con RC se actualizan desde la consola.
+
+| Dato | Dónde | Por qué |
+|---|---|---|
+| System prompt base de Anima, **uno por provider** (`system_prompt_anthropic`, `_openai`, `_google`, `_on_device` — parámetros planos: texto largo editable sin escapes) | Remote Config | El "prompt propio del harness" (análogo al de OpenClaw); no es secreto |
+| `provider_config` (JSON): por provider, `api` (base_url, version, **betas**) + `routes` (el dial §4.7 por TurnClass) | Remote Config | Betas y model IDs rotables sin release |
+| API key / OAuth token del usuario | **Keychain, siempre** | RC es legible por todo cliente — jamás secretos ahí |
+| SOUL del usuario (quién quiere que sea su agente) | SelfModel local (GRDB) | Nace en el onboarding ("Birth") y evoluciona con la plasticidad |
+
+**Arquitectura**: `RemoteConfigProviding` + `ConfigSnapshot` viven en AnimaKit (sin dependencia de Firebase); el app shell implementa con `FirebaseRemoteConfig` (`FirebaseApp.configure()` + `fetchAndActivate`). Parser **forward-compatible**: providers/turn classes desconocidos se ignoran — una config nueva en consola jamás crashea una app vieja.
+
+**Reglas duras**:
+1. **Snapshot congelado por frontera de sesión** — activar config a mitad de sesión invalidaría el prompt cache del prefijo (§5.1) y cambiaría al agente bajo los pies. `minimumFetchInterval` ≥ 12 h en prod (0 en DEBUG).
+2. **Defaults bundled obligatorios** (`RemoteConfigDefaults.plist` con los mismos parámetros): perfil edge = la app funciona sin red, primera apertura incluida.
+3. `GoogleService-Info.plist` real en `App/` y **gitignored** (repo público — invita abuso de cuota); template versionado. Opcional recomendado: **App Check** (App Attest).
+4. Niveles de prompt resultantes: **base (RC, prefijo cacheado) → SOUL del usuario (SelfModel, mid-conversation system §4.5) → conversación (user messages)** — la separación soul-vs-system de OpenClaw, cache-aware.
+5. v1 implementa el provider `anthropic`; los demás quedan configurables desde ya (el onboarding del design system ofrece los 4).
+
 ---
 
 ## 5. Subsistemas B.2–B.10 en Swift
@@ -387,6 +408,7 @@ enum ReliefStrategy { case clearStaleToolResults; case compact; case evictToBrai
 PREFIJO ESTABLE (cache_control en el último bloque; solo muta con release de la app):
   1. tools[]            — tool specs, orden fijo alfabético (jamás reordenar mid-session)
   2. system top-level   — innate prompt: reglas duras, formato, contrato de memoria
+                          (= system_prompt_base del provider activo, del ConfigSnapshot §4.8 — congelado por sesión)
 MESSAGES (append-only dentro de la sesión):
   3. bloques compaction — si server-side compaction emitió; se re-anexan cada turno
   4. history window     — la ventana del SymbolicStore
@@ -849,6 +871,7 @@ Herencia directa del §C.2 del spec: **todo lo nuevo cuesta 0 en el turno; el co
 ## 8. Seguridad y privacidad
 
 - **API key**: Keychain, `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`, sin sync a iCloud Keychain. Se ingresa una vez en Settings, jamás en código/plist/UserDefaults. **Advertencia estructural**: una key embebida en un dispositivo es extraíble por el dueño del dispositivo (jailbreak/proxy). Aceptable **solo** porque el dueño del dispositivo y el dueño de la key son la misma persona. Corolario: **no distribuir** — build personal firmado con la cuenta de Joshua. Si algún día se comparte, la arquitectura correcta es un proxy backend con la key server-side (fuera de v1). Mitigación barata adicional: workspace/key de Anthropic dedicado con spend limit.
+- **Config remota**: Remote Config solo lleva config no-secreta (prompts base, betas, rutas de modelo) — es legible por cualquier cliente. `GoogleService-Info.plist` gitignored en el repo público; App Check recomendado.
 - **Permisos iOS (TCC)**: cada framework pide su prompt en primer uso, con `*UsageDescription` honestos en el Info.plist (Calendars, Reminders, Location When-In-Use, HealthKit read, Contacts, Camera, Microphone, Speech) + autorización de notificaciones (`UNUserNotificationCenter.requestAuthorization`) pedida en el onboarding — es el canal de approvals y propuestas. La app degrada elegante ante denegación: la tool reporta "sin permiso" como tool_result normal (y el RealRegister lo ve como `permission_denied`, que rutea a `escalateToOther` — el agente le pide el permiso al dueño, no lo fuerza).
 - **Regla de captura**: cámara y micrófono solo por acción del dueño o con `ask` explícito por captura. Sin captura ambiental, sin excepciones. El audio se transcribe **on-device** (Speech) — el audio crudo no sale del teléfono.
 - **Qué sale del dispositivo**: exactamente lo que entra al contexto del turno (mensajes, tool results, imágenes adjuntadas) hacia la API de Anthropic — nada más, a nadie más. El brain, el transcript, los embeddings, la salud, los contactos viven en GRDB dentro del sandbox con iOS Data Protection (`NSFileProtectionComplete` para el .sqlite). HealthKit entra al contexto solo como summaries agregados y solo cuando la tool se invoca.
@@ -867,7 +890,7 @@ Herencia directa del §C.2 del spec: **todo lo nuevo cuesta 0 en el turno; el co
 | 4 | **Transcripción**: `SFSpeechRecognizer` vs el stack `SpeechAnalyzer` más nuevo | SFSpeechRecognizer on-device | Fase 1; criterio: calidad es-CO y soporte de audio >1 min |
 | 5 | **Backup/sync del brain** (iCloud encriptado, export manual, nada) | Nada en v1 — el brain muere con el teléfono (riesgo aceptado, incómodo) | Post-v1; un export .sqlite manual es barato de agregar antes |
 | 6 | **Umbral de "alto impacto"** para el gate de Goals Inferred (¿qué eferentes exactamente?) | Todo eferente escribiente + toda comunicación saliente | Fase 4, con casos reales en la mano |
-| 7 | **Version strings** de betas y server tools (`compact-2026-01-12`, `context-management-2025-06-27`, `web_search_20260209`) | Los aquí citados | **Verificar contra docs vivas al inicio de cada fase** — el doc A registra que rotan |
+| 7 | **Version strings** de betas y server tools (`compact-2026-01-12`, `context-management-2025-06-27`, `web_search_20260209`) | **Gestionados vía Remote Config (§4.8)** — rotables sin release | Verificar contra docs vivas al rotarlos; RC es el mecanismo de despliegue |
 | 8 | **Bootstrap del SelfModel**: ¿seed manual de Joshua (innate) o nacer casi vacío y formarse en el período crítico? | Seed mínimo (nombre, para-quién, 3 valores) + bootstrap libre los primeros ~10 ciclos | Fase 3 — es la pregunta más bonita del proyecto; probar ambas |
 | 9 | **Heurística de `contradicted`** en usageLog (v1: corrección explícita del dueño) — ¿basta, o hace falta que el ciclo compare outcome vs contenido? | Corrección explícita + referencias del RealRegister | Fase 2/3, mirando falsos negativos en el browser |
 | 10 | **Salud como Observable continuo** (pull en cada pulso) vs solo on-demand por tool | Pull agregado en pulso (barato, local) | Fase 4; si el permiso incomoda, degradar a on-demand |
