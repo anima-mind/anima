@@ -394,6 +394,29 @@ Lo operable-sin-release vive en Firebase Remote Config; lo secreto, jamás. Resu
 
    El RequestBuilder compone `system` con `ProviderAPIConfig.systemBlocks(for:base:)` y los headers con `effectiveBetas(for:)`. Nada de esto vive en código fuente: prefijo y betas son configuración (rotan sin release). En modo `api_key` el dial Opus/Haiku es económicamente relevante (pago por token); en `oauth` el plan es fijo y el dial pesa menos.
 
+### 4.9 Modos de operación y el provider on-device (Foundation Models)
+
+**Decisión de arquitectura (2026-09-24, no re-litigar): on-device NO es un fallback — es un modo completo de primera clase.** El harness es local por construcción (la mente entera —Brain, SelfModel, RealRegister, consolidación— vive en GRDB en el teléfono); los providers son solo el córtex intercambiable. Tres modos:
+
+| Modo | Córtex | Costo | Requiere |
+|---|---|---|---|
+| **Solo teléfono (gratis)** | Apple Foundation Models para TODOS los TurnClasses, conversación incluida | $0, cero red | iPhone con Apple Intelligence (15 Pro+; 16/17 todos) |
+| **Claude** | Como §4.7: Opus/Haiku con el token del usuario (API key u OAuth de SU licencia — jamás compartido) | Por token o suscripción propia | Token en Keychain |
+| **Híbrido** | Conversación/restructure en Opus; sueño, pulsos y destilado en el modelo local | Solo los turnos caros | Ambos |
+
+**`OnDeviceProvider`** implementa el MISMO protocol `Provider` con el framework FoundationModels (iOS 26+): streaming nativo, **tool calling real** (protocol `Tool` del framework → el Sensorimotor completo funciona sin Claude: calendario, notas, recordatorios en modo gratis) y guided generation para los destilados estructurados del ciclo.
+
+**Implicaciones de contrato**:
+1. **Target sube a iOS 26** (decisión fijada: fuera los gates `@available`; el límite real de hardware lo pone Apple Intelligence, no el OS). Disponibilidad SIEMPRE por runtime (`SystemLanguageModel.availability`): dispositivo no elegible, Apple Intelligence apagada o modelo sin descargar → el modo se muestra deshabilitado con el porqué.
+2. **La presión de WorkingMemory es relativa al provider activo** (~4k tokens del modelo local vs 200k+ de Claude). El relieve en on-device es mecánico local (trim de tool results + evict al Brain): las betas de compaction/context-management son de Anthropic y NO existen aquí.
+3. El dial por provider ya vive en `provider_config` (§4.8): la entrada `on_device` define sus 7 rutas al mismo modelo local; `system_prompt_on_device` es su prompt base (más corto: el contexto manda).
+4. Onboarding: elegir "Solo este teléfono · gratis" **salta el paso de API key**. Cambiar de modo después vive en Ajustes, sin re-onboarding. La identidad (Sign in with Apple → Firebase Auth) es ortogonal al modo: registra al usuario para lo que viene (respaldo, planes), jamás gatea el uso local.
+5. Invariantes que no se delegan (§A.3) aplican igual en modo gratis: permisos, presupuestos, clasificación de errores, RealRegister — el harness no se vuelve más permisivo porque el modelo sea local.
+6. `ProviderProfile` del modelo local: `scaffolds` crece (planning asistido, verificación por el harness, prompts más guiados) — exactamente el caso que el §4.7 anticipaba para "un modelo local de 8B", ahora con el ~3B de Apple.
+
+**Voz**: sin cambios — STT (`SFSpeechRecognizer` on-device) y TTS (`AVSpeechSynthesizer`) ya son nativos de iOS en todos los modos (§5.7); el modo gratis solo completa el cuadro: percepción, voz, córtex y mente, todo en el dispositivo.
+
+
 ---
 
 ## 5. Subsistemas B.2–B.10 en Swift
