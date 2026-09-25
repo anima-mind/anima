@@ -754,14 +754,16 @@ protocol SkillEngine {
     func match(_ task: String) -> [Skill]          // skills = markdown procedural en Documents/skills/,
                                                    // frontmatter name/description, match por retrieve híbrido
     func practice(_ s: SkillID, outcome: Outcome)  // contador de usos/éxitos en GRDB
-    func automatize(_ s: SkillID) -> CompiledSkill?// K=5 éxitos consecutivos sin fallos en RealRegister →
+    func automatize(_ s: SkillID) -> CompiledSkill?// K=5 éxitos consecutivos (racha; un fallo resetea) →
                                                    // el skill se compila a: secuencia fija de tool calls
                                                    // pre-validada que se ofrece como sugerencia de 1 tap
     func deautomatize(_ s: SkillID)                // insistencia del RealRegister sobre el compilado → vuelve a declarativo
 }
 ```
 
-`CompiledSkill` en edge = macro determinística (ej.: "resumen de mañana" = calendar.list(hoy) + reminders.list(vencidos) + health.summary(1d) + 1 llamada Haiku de formato). La desautomatización dirigida por lo Real es el único matiz propio: si la macro empieza a fallar, se desarma y vuelve a razonarse.
+**Estados (como quedó implementado, 2026-09-25)**: learned → practiced (racha 3, visible en UI) → **automatized (racha 5)**; un fallo resetea la racha, así que la desautomatización emerge sola — no hay consulta explícita al RealRegister al automatizar, el acople es vía la racha.
+
+**Semántica del compilado (System 1 con guardias de System 2)**: con match de confianza ALTA (umbral 0.6 vs 0.34 de la inyección de conocimiento), los pasos **aferentes** del `CompiledSkill` se ejecutan directo vía Sensorimotor+PermissionPolicy SIN consultar al LLM paso a paso; luego hay UNA llamada al LLM que redacta/decide con los resultados; los **eferentes jamás se auto-ejecutan** (tool_use + ask, siempre). Ej.: "nota diaria" = notes.read(diario-{hoy})? + el LLM redacta + notes.append tras ok. Gramática de steps `tool.op(k=v)` con placeholders `{hoy}`/`{turno}` y `?` opcional; un argumento irresoluble aborta ANTES de ejecutar nada (neutral, cae a inyección). La desautomatización dirigida por lo Real: un paso aferente que falla aborta el resto, cae a inyección en el mismo turno, rompe la racha y alimenta el RealRegister.
 
 ### 5.8 DesireEngine + OtherModel (§B.8)
 
