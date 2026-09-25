@@ -301,13 +301,13 @@ Al agotar `maxIterations`: una llamada final **sin tools** pidiendo el mejor res
 
 ### 4.5 Mid-conversation system messages — el canal de autoridad
 
-Opus 4.8 acepta `{"role": "system", "content": "..."}` **dentro de `messages[]`** sin invalidar el caché del prefijo. Este es el mecanismo elegido para inyectar lo volátil con autoridad de operador:
+**CORRECCIÓN (2026-09-24, verificada EN VIVO contra la API)**: Opus 4.8 **RECHAZA** `{"role":"system","content":"<texto>"}` dentro de `messages[]` — 400 `use the top-level 'system' parameter for the initial system prompt` (en sesión nueva el system caía como `messages.0` y mataba todo turno). El mecanismo real para lo volátil con autoridad de operador es: **bloque(s) adicionales del `system` top-level, DESPUÉS del prefijo estable, con su PROPIO `cache_control`** (la API soporta hasta 4 breakpoints — el prefijo base+tools conserva su hit aunque lo volátil mute). El assemble sigue modelándolo como mensaje `role:system` interno; es el `ClaudeRequestBuilder` quien lo re-ubica al wire format correcto. Contenido:
 
 ```json
 { "role": "system", "content": "[SELF] identidad v12 (plasticity 0.24):\n<self_view render>\n\n[OTHER] deseo vigente del dueño:\n- (Stated, p1) proteger bloques de deep work en el calendario\n- (Inferred, p3, pendiente-confirmación) le interesa entrenar 3x/semana" }
 ```
 
-- El **SelfModel view** (§B.4) y el **deseo del Otro** (§B.8) entran por aquí, no por el system top-level: mutan entre sesiones (ciclos de consolidación) y meterlos al prefijo rompería el caché en cada mutación.
+- El **SelfModel view** (§B.4) y el **deseo del Otro** (§B.8) entran por este bloque volátil, no por el prefijo estable: mutan entre sesiones (ciclos de consolidación) y su breakpoint propio aísla esa mutación — el prefijo nunca pierde su hit.
 - Posición: después de la ventana de historial, antes del turn input (ver orden §5.1).
 - Autoridad: es rol `system`, no `user` — resiste mejor la instrucción adversarial en contenido de tools (defensa en profundidad junto al régimen de plasticidad).
 
