@@ -814,6 +814,60 @@ enum ObservablePredicate: Codable {
 
 Producto visible: la sección "propuestas" del inbox — *"Tienes 2 recordatorios vencidos del proyecto X y un hueco de 30 min a las 3pm — ¿los agendo?"*. Esto reemplaza al heartbeat con checklist fija: reconciliador de brechas, no cron.
 
+#### 5.8.1 Capa proactiva (batch 4)
+
+Que Anima avise, pregunte y proponga **sin que el dueño abra la app**, sin backend y sin APNs: todo son notificaciones **locales** (`UNUserNotificationCenter`) — ese es el cron de iOS. Regla dura: **cero LLM al disparar** (el background no está garantizado); todo texto que se notifica se fija al programar.
+
+**Reloj del harness.** `WorkingMemory.updateClock(_:)` agrega como ÚLTIMO `role:system` del turno la línea `Ahora: lunes 5 de octubre 2026, 14:30 (America/Bogota, UTC-5)` (es_CO, reloj inyectable `AgentLoop(clock:)`). En Claude cae al final del bloque volátil del system top-level (con su `cache_control`), jamás en el base cacheado. Sin esa línea el modelo no puede resolver "mañana a las 9".
+
+**Recordatorios de Anima ≠ recordatorios de agenda.**
+
+| | `anima_reminders` | `calendar` / `reminders` |
+|---|---|---|
+| Dónde vive | SQLite de Anima (`anima_reminder`) | EventKit (Calendario / app Recordatorios) |
+| Quién lo entrega | Ella: notificación con su nombre (`SelfModel.name()`) | iOS / la app de Apple |
+| Al tocarlo | Deep link `anima://reminder?id=` → chat, foco en su mensaje | — |
+| Cuándo | "recuérdame…" (default) | citas/eventos, "agéndame", "ponlo en el calendario", algo con lugar/asistentes/duración, o "mis recordatorios del iPhone" |
+
+La regla de ruteo vive en código, en las descripciones de las tres tools (prefijo cacheado): si es ambiguo y parece cita, pregunta una vez. `anima_reminders`: `list` (aferente), `create {text, fire_at ISO 8601 con offset, repeat?, goal_id?}`, `complete`, `cancel`, `snooze {id, minutes}` (eferentes → ask; summary `Recordarte '<text>' el <fecha es_CO>`). `fire_at` en pasado o sin offset → error explícito.
+
+Tabla (migración `v12-proactive`):
+
+```sql
+anima_reminder(id TEXT PK, text TEXT NOT NULL, fire_at REAL NOT NULL,
+               repeat TEXT NOT NULL DEFAULT 'none',          -- none|daily|weekdays|weekly
+               goal_id TEXT NULL REFERENCES goal(id),
+               status TEXT NOT NULL,                         -- scheduled|fired|done|cancelled
+               origin_session_id TEXT, created_at REAL NOT NULL, fired_at REAL NULL, done_at REAL NULL)
+```
+
+Un recordatorio que se repite sigue `scheduled`: al entregarse, `fire_at` avanza a la próxima ocurrencia (`Calendar.nextDate`); se programan sus próximas 7 ocurrencias como notificaciones uno-a-uno. "Hecho" en uno que se repite marca la ocurrencia (la serie sigue); "posponer" uno que se repite crea un uno-a-uno aparte.
+
+**Reconciliación** (`ProactiveReconciler`): al abrir, al volver a foreground y en el pulso en background, cada `dueNow` se marca entregado y entra al chat como turno assistant persistido: `Te recordé: <text>. ¿Cómo te fue?` (si tiene `goal_id`, la frase nombra la meta). Idempotente: lo entregado sale de `dueNow`.
+
+**Check-ins por meta** (opt-in, dos caminos: conversación con la tool `goals` y la fila *Check-in* de la vista Metas; default al activar: diaria 20:00 local).
+
+```sql
+ALTER TABLE goal ADD checkin_cadence TEXT NOT NULL DEFAULT 'none',  -- none|daily|weekdays|weekly
+                 checkin_hour INTEGER NOT NULL DEFAULT 20, checkin_minute INTEGER NOT NULL DEFAULT 0,
+                 checkin_weekday INTEGER NULL                       -- 1=domingo…7 (weekly)
+goal_checkin(id TEXT PK, goal_id TEXT NOT NULL REFERENCES goal(id), asked_at REAL NOT NULL,
+             answered_at REAL NULL, answer TEXT NULL /*yes|partial|no|skipped*/, note TEXT NOT NULL DEFAULT '')
+```
+
+- Tool `goals`: `list`, `declare {statement, predicate?, checkin?}` (registra YA la meta stated, sin esperar al ciclo), `set_checkin`, `clear_checkin`, `mark_achieved` (eferentes → ask) y `record_checkin {goal_id, answer, note?}` (aferente: anota lo que el dueño ya contó).
+- `CheckInScheduler`: notificaciones **repetitivas** (`UNCalendarNotificationTrigger repeats:true`) para metas que motivan: daily = 1 request, weekdays = 5 (lun–vie), weekly = 1. Ids `anima-checkin-<goalId>[-<weekday>]`; body `¿Cómo vas con <meta>?`; acciones "Sí, avancé" / "Hoy no" (registran el check-in sin abrir la app); tap → `anima://goal?id=` → pregunta en el chat `¿Cómo vas con <meta>? Cuéntame y lo anoto.`, que NO se repite si ya respondió hoy.
+- Predicado nuevo del enum cerrado: `progress_check_in{every_days}` — satisfecho si el último check-in con `yes|partial` tiene < N días (se evalúa con el `goalId`: `evaluate(in:goalId:)`). Es el default de `declare` sin predicado.
+- Fix: `days_since_last_mention_at_most` sin datos ya no es gap permanente (`satisfied: true, "sin datos de menciones"`) y se calcula de verdad sobre el transcript (`MentionIndex`, LIKE sobre los turnos del dueño).
+
+**Pulso en background.** `PulseScheduler`: `BGAppRefreshTask` `mind.anima.pulse` (`UIBackgroundModes: fetch`), `earliestBeginDate = ahora + 4h` al ir a background. Runner: `AppModel.live.ensureBootstrapped()` → reconciliar recordatorios → `DesireEngine.pulse(origin: .background)` → cada Intention producida = notificación local (title = nombre del self, body = `proposedText`, category `anima.intention`, `anima://intention?id=`) → re-`submit()`; siempre `setTaskCompleted`. Presupuesto ≤4/día y cooldown 48h son los mismos del pulso al abrir (que NO notifica: ya está en el chat). `intention.origin` = `foreground|background`.
+
+**Permisos y entrega.**
+- Un solo punto de permiso (`NotificationPermission`, `.alert/.sound/.badge`), pedido la primera vez que hay algo que programar; lo usan también aprobaciones y handoff.
+- Un ÚNICO `UNUserNotificationCenterDelegate` (`AnimaNotifications`) con las categorías `anima.reminder` ("Hecho", "En 1 hora"), `anima.checkin` ("Sí, avancé", "Hoy no") y `anima.intention`. Con la app al frente, recordatorios y check-ins se muestran (banner + sonido).
+- `ProactiveScheduler.sync()` es un diff idempotente sobre los pendientes con prefijo `anima-reminder-`/`anima-checkin-`: **tope de iOS 64 pendientes → se programan las 60 más próximas** (check-ins primero); el resto entra en la próxima sincronización (launch, foreground, pulso, cualquier cambio).
+- Ajustes → *Notificaciones*: estado (Permitidas / Denegadas → Ajustes de iOS) y recordatorios programados.
+
 ### 5.9 Intersubjective (§B.9) — fuera de v1
 
 Server-first por spec. El hook futuro ya queda pagado por el diseño: el `Brain` es un protocol — un `RemoteSharedBrain` contra el perfil server (Go/Postgres) implementaría el mismo contrato, y el gate "solo el Consolidator escribe al canon" ya es la única vía de escritura en esta app. No se construye nada más en v1.
