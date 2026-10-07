@@ -1,9 +1,44 @@
-# Anima
+<p align="center">
+  <img src="assets/brand/anima-logo.png" alt="Anima" width="140" />
+</p>
 
-**Un harness de agentes con forma de mente.** Blueprint portable —agnóstico de lenguaje y de proveedor de LLM— para construir asistentes personales modelados sobre cómo el lenguaje forma la mente humana (Chomsky · Lacan · Kandel), con implementaciones en Swift (edge/móvil) y Go (server/daemon).
+<h1 align="center">Anima</h1>
 
-> Una mente = LLM (dotación) + harness (desarrollo) + historia (experiencia).
-> Este repo es el **contrato compartido**: el spec que todos los runtimes obedecen.
+<p align="center">
+  <b>Un harness de agentes con forma de mente.</b><br/>
+  <i>A mind-shaped agent harness.</i>
+</p>
+
+<p align="center">
+  <code>una mente = LLM (dotación) + harness (desarrollo) + historia (experiencia)</code>
+</p>
+
+<p align="center">
+  <a href="#estado"><img src="https://img.shields.io/badge/estado-pruebas%20de%20campo-6aa8ff" alt="estado: pruebas de campo"/></a>
+  <a href="https://github.com/anima-mind/anima-ios"><img src="https://img.shields.io/badge/runtime-iOS%20%C2%B7%20Swift-1f2a3a" alt="iOS"/></a>
+  <a href="https://github.com/anima-mind/animad"><img src="https://img.shields.io/badge/runtime-server%20%C2%B7%20Go-1f2a3a" alt="Go"/></a>
+</p>
+
+Blueprint portable —agnóstico de lenguaje y de proveedor de LLM— para construir asistentes personales modelados sobre cómo el lenguaje forma la mente humana (**Chomsky · Lacan · Kandel**), con implementaciones en Swift (edge/móvil) y Go (server/daemon). Este repo es el **contrato compartido**: el spec que todos los runtimes obedecen.
+
+## Así se ve
+
+<p align="center">
+  <img src="assets/screenshots/chat.png" alt="Chat" width="22%" />
+  <img src="assets/screenshots/propuesta.png" alt="Propuesta proactiva" width="22%" />
+  <img src="assets/screenshots/memoria.png" alt="Memoria consolidada" width="22%" />
+  <img src="assets/screenshots/mente.png" alt="La mente: plasticidad y noches" width="22%" />
+</p>
+<p align="center"><sub>Chat · propuesta proactiva ligada a una meta · memoria destilada en la noche · la mente (plasticidad y ciclos de sueño). Capturas del runtime iOS en desarrollo.</sub></p>
+
+## Cómo piensa
+
+| Idea | En Anima |
+|---|---|
+| **El sueño consolida** (Kandel) | Cada noche, mientras el teléfono carga, un ciclo destila la conversación en memorias durables, reconsolida las viejas y reflexiona. |
+| **La plasticidad decae** | `p(n) = 0.05 + 0.95·e^(−n/30)`: la identidad se moldea libre al principio y se estabiliza con las noches; pasada la infancia, cambiar quién es exige tu aprobación. |
+| **El deseo del Otro** (Lacan) | Tus metas —declaradas o inferidas— motivan propuestas y seguimientos proactivos, acotados para no volverse ruido. |
+| **La gramática como estructura** (Chomsky) | Tools tipadas con permisos explícitos y skills que se aprenden con la práctica: lo que hace es verificable, no solo lo que dice. |
 
 ## Los documentos
 
