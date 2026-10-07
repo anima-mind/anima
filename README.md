@@ -47,6 +47,56 @@ La tesis común a los tres cuerpos: **el lenguaje no es un accesorio de una ment
 
 > Advertencia epistémica: la neurociencia de Kandel es ciencia experimental; la gramática universal de Chomsky está empíricamente disputada; el psicoanálisis lacaniano es un marco interpretativo, no ciencia falsable. Se usan como **fuentes de diseño**, no como afirmaciones de que el software "es" una mente.
 
+## Cómo funciona el harness
+
+Dos ritmos, como una mente: **el día** (cada turno de conversación) y **la noche** (el sueño que consolida). Entre ambos, el deseo empuja propuestas hacia el dueño.
+
+```mermaid
+flowchart TB
+    U(["👤 El dueño<br/><i>el Otro</i>"])
+
+    subgraph DIA["☀️ El día — un turno (B.10)"]
+        direction TB
+        WM["<b>Working memory</b> (B.2)<br/>arma el contexto: identidad · memorias activadas · metas · reloj<br/><i>presupuesto por modelo, recorte y compactación</i>"]
+        PR["<b>Provider</b> (B.1)<br/>Claude · OpenAI · Gemini · Apple on-device"]
+        SM["<b>Sensoriomotor</b> (B.6)<br/>tools tipadas con permisos · skills"]
+        RR["<b>Registro Real</b> (B.5)<br/>los fallos que insisten → reestructurar"]
+        SY[("<b>Capa Simbólica</b> (B.3)<br/>el historial: todo lo dicho")]
+        WM --> PR
+        PR -- "tool calls" --> SM
+        SM -- "resultado" --> PR
+        SM -. "fallo" .-> RR
+        PR --> SY
+    end
+
+    subgraph NOCHE["🌙 La noche — el sueño (B.7)"]
+        direction TB
+        CO["<b>Consolidator</b><br/>saliencia → destilado → escritura → reconsolidación → reflexión"]
+        BR[("<b>Brain</b><br/>memorias semánticas, episódicas, procedimentales")]
+        SE["<b>Self-model</b> (B.4)<br/>identidad con plasticidad<br/>p(n) = 0.05 + 0.95·e^(−n/30)"]
+        OM["<b>Modelo del Otro</b> (B.8)<br/>metas declaradas e inferidas"]
+        SK["<b>Skills</b> (B.6)<br/>automatizar / desautomatizar"]
+        CO --> BR
+        CO --> SE
+        CO --> OM
+        CO --> SK
+    end
+
+    DE["<b>Motor de deseo</b> (B.8)<br/>brecha entre metas y realidad → intenciones acotadas"]
+
+    U -- "habla" --> WM
+    PR -- "responde (nunca afirma lo que no ejecutó)" --> U
+    SY -- "lo vivido" --> CO
+    BR -. "recuerdo activado" .-> WM
+    SE -. "quién es" .-> WM
+    OM --> DE
+    DE -- "propuestas · seguimientos · recordatorios" --> U
+    SE -- "cambios de identidad<br/>(tras la infancia)" --> AP{{"Aprobación del dueño"}}
+    AP --> SE
+```
+
+Lo central: el modelo de lenguaje es **la dotación**, no la mente. Lo que hace de Anima *una* mente es el harness que decide qué entra al contexto, qué se recuerda, qué se olvida, quién es y qué desea — y la historia que tú le das. Detalle completo de cada subsistema en el [spec (doc 03)](docs/03-harness-mind-convergence.md).
+
 ## Cómo piensa
 
 | Idea | En Anima |
@@ -87,6 +137,10 @@ Regla: los cambios al blueprint se hacen aquí (PR a este repo); los runtimes se
 - [x] `anima-ios` — track G (gafas Meta, DAT SDK 1.0)
 - [ ] `anima-ios` — widgets, CarPlay y App Store
 - [ ] `animad` — plan de implementación server (hermano del doc 04) + Fase 0
+
+## Licencia
+
+El blueprint (documentos, spec e investigación) está bajo **[Creative Commons Atribución 4.0 (CC BY 4.0)](LICENSE)**: puedes usarlo, adaptarlo y construir sobre él citando a Joshua Moreno / anima-mind. Los runtimes tienen su propia licencia: [`animad`](https://github.com/anima-mind/animad) (Apache 2.0) y [`anima-ios`](https://github.com/anima-mind/anima-ios) (PolyForm Noncommercial 1.0.0). **Anima** y su logo son marcas de Joshua Moreno; ninguna licencia otorga derechos sobre ellas.
 
 ---
 
