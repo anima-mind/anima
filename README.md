@@ -31,6 +31,22 @@ Blueprint portable —agnóstico de lenguaje y de proveedor de LLM— para const
 </p>
 <p align="center"><sub>Chat · propuesta proactiva ligada a una meta · memoria destilada en la noche · la mente (plasticidad y ciclos de sueño). Capturas del runtime iOS en desarrollo.</sub></p>
 
+## La investigación detrás
+
+Anima no partió de código sino de una pregunta: **¿qué pasa si en vez de diseñar un agente como un pipeline de prompts, lo diseñamos como se forma una mente?** Antes de escribir una línea se hizo una investigación en tres frentes, con verificación adversarial de cada afirmación:
+
+1. **Ingeniería de harnesses** ([doc 01](docs/01-agent-harness-manual.md)) — anatomía de un agent harness (loop, contexto, tools, memoria, fallos, seguridad, extensibilidad) y una comparativa de 8 harnesses reales.
+2. **Cómo el lenguaje forma la mente** ([doc 02](docs/02-language-mind-formation.md)) — tres cuerpos de conocimiento con estatus epistémico distinto, marcado explícitamente:
+   - **Lingüística — Chomsky**: competencia vs. actuación, pobreza del estímulo, la facultad del lenguaje y la recursión, la jerarquía formal.
+   - **Psicoanálisis — Lacan**: el estadio del espejo, los registros Real · Simbólico · Imaginario, la primacía del significante, el gran Otro y el deseo.
+   - **Neurociencia — Kandel**: plasticidad sináptica, sistemas de memoria (H.M.), reconsolidación, períodos críticos y las bases corticales del lenguaje.
+   - Y sus **convergencias y disputas**: el debate Chomsky–Piaget, la crítica empírica al innatismo (Evans & Levinson, Tomasello), el neuropsicoanálisis (Solms, Kandel) y el habla interior (Vygotsky).
+3. **La convergencia harness ↔ mente** ([doc 03](docs/03-harness-mind-convergence.md), *el spec*) — esa teoría traducida a **10 subsistemas** de software con contratos, evals falsables y una **tabla de novedad honesta** contra el prior art (CoALA, MemGPT/Letta, Generative Agents, Reflexion, Voyager, ACT-R…): qué es nuevo, qué es incremental y qué ya existía.
+
+La tesis común a los tres cuerpos: **el lenguaje no es un accesorio de una mente ya formada; es (co)constituyente de ella.** Anima la toma literal: su "mente" es lo que el lenguaje —la conversación contigo— va dejando, consolidado cada noche.
+
+> Advertencia epistémica: la neurociencia de Kandel es ciencia experimental; la gramática universal de Chomsky está empíricamente disputada; el psicoanálisis lacaniano es un marco interpretativo, no ciencia falsable. Se usan como **fuentes de diseño**, no como afirmaciones de que el software "es" una mente.
+
 ## Cómo piensa
 
 | Idea | En Anima |
