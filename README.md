@@ -1,9 +1,110 @@
-# Anima
+<p align="center">
+  <img src="assets/brand/anima-logo.png" alt="Anima" width="140" />
+</p>
 
-**Un harness de agentes con forma de mente.** Blueprint portable —agnóstico de lenguaje y de proveedor de LLM— para construir asistentes personales modelados sobre cómo el lenguaje forma la mente humana (Chomsky · Lacan · Kandel), con implementaciones en Swift (edge/móvil) y Go (server/daemon).
+<h1 align="center">Anima</h1>
 
-> Una mente = LLM (dotación) + harness (desarrollo) + historia (experiencia).
-> Este repo es el **contrato compartido**: el spec que todos los runtimes obedecen.
+<p align="center">
+  <b>Un harness de agentes con forma de mente.</b><br/>
+  <i>A mind-shaped agent harness.</i>
+</p>
+
+<p align="center">
+  <code>una mente = LLM (dotación) + harness (desarrollo) + historia (experiencia)</code>
+</p>
+
+<p align="center">
+  <a href="#estado"><img src="https://img.shields.io/badge/estado-pruebas%20de%20campo-6aa8ff" alt="estado: pruebas de campo"/></a>
+  <a href="https://github.com/anima-mind/anima-ios"><img src="https://img.shields.io/badge/runtime-iOS%20%C2%B7%20Swift-1f2a3a" alt="iOS"/></a>
+  <a href="https://github.com/anima-mind/animad"><img src="https://img.shields.io/badge/runtime-server%20%C2%B7%20Go-1f2a3a" alt="Go"/></a>
+</p>
+
+Blueprint portable —agnóstico de lenguaje y de proveedor de LLM— para construir asistentes personales modelados sobre cómo el lenguaje forma la mente humana (**Chomsky · Lacan · Kandel**), con implementaciones en Swift (edge/móvil) y Go (server/daemon). Este repo es el **contrato compartido**: el spec que todos los runtimes obedecen.
+
+## Así se ve
+
+<p align="center">
+  <img src="assets/screenshots/chat.png" alt="Chat" width="22%" />
+  <img src="assets/screenshots/propuesta.png" alt="Propuesta proactiva" width="22%" />
+  <img src="assets/screenshots/memoria.png" alt="Memoria consolidada" width="22%" />
+  <img src="assets/screenshots/mente.png" alt="La mente: plasticidad y noches" width="22%" />
+</p>
+<p align="center"><sub>Chat · propuesta proactiva ligada a una meta · memoria destilada en la noche · la mente (plasticidad y ciclos de sueño). Capturas del runtime iOS en desarrollo.</sub></p>
+
+## La investigación detrás
+
+Anima no partió de código sino de una pregunta: **¿qué pasa si en vez de diseñar un agente como un pipeline de prompts, lo diseñamos como se forma una mente?** Antes de escribir una línea se hizo una investigación en tres frentes, con verificación adversarial de cada afirmación:
+
+1. **Ingeniería de harnesses** ([doc 01](docs/01-agent-harness-manual.md)) — anatomía de un agent harness (loop, contexto, tools, memoria, fallos, seguridad, extensibilidad) y una comparativa de 8 harnesses reales.
+2. **Cómo el lenguaje forma la mente** ([doc 02](docs/02-language-mind-formation.md)) — tres cuerpos de conocimiento con estatus epistémico distinto, marcado explícitamente:
+   - **Lingüística — Chomsky**: competencia vs. actuación, pobreza del estímulo, la facultad del lenguaje y la recursión, la jerarquía formal.
+   - **Psicoanálisis — Lacan**: el estadio del espejo, los registros Real · Simbólico · Imaginario, la primacía del significante, el gran Otro y el deseo.
+   - **Neurociencia — Kandel**: plasticidad sináptica, sistemas de memoria (H.M.), reconsolidación, períodos críticos y las bases corticales del lenguaje.
+   - Y sus **convergencias y disputas**: el debate Chomsky–Piaget, la crítica empírica al innatismo (Evans & Levinson, Tomasello), el neuropsicoanálisis (Solms, Kandel) y el habla interior (Vygotsky).
+3. **La convergencia harness ↔ mente** ([doc 03](docs/03-harness-mind-convergence.md), *el spec*) — esa teoría traducida a **10 subsistemas** de software con contratos, evals falsables y una **tabla de novedad honesta** contra el prior art (CoALA, MemGPT/Letta, Generative Agents, Reflexion, Voyager, ACT-R…): qué es nuevo, qué es incremental y qué ya existía.
+
+La tesis común a los tres cuerpos: **el lenguaje no es un accesorio de una mente ya formada; es (co)constituyente de ella.** Anima la toma literal: su "mente" es lo que el lenguaje —la conversación contigo— va dejando, consolidado cada noche.
+
+> Advertencia epistémica: la neurociencia de Kandel es ciencia experimental; la gramática universal de Chomsky está empíricamente disputada; el psicoanálisis lacaniano es un marco interpretativo, no ciencia falsable. Se usan como **fuentes de diseño**, no como afirmaciones de que el software "es" una mente.
+
+## Cómo funciona el harness
+
+Dos ritmos, como una mente: **el día** (cada turno de conversación) y **la noche** (el sueño que consolida). Entre ambos, el deseo empuja propuestas hacia el dueño.
+
+```mermaid
+flowchart TB
+    U(["👤 El dueño<br/><i>el Otro</i>"])
+
+    subgraph DIA["☀️ El día — un turno (B.10)"]
+        direction TB
+        WM["<b>Working memory</b> (B.2)<br/>arma el contexto: identidad · memorias activadas · metas · reloj<br/><i>presupuesto por modelo, recorte y compactación</i>"]
+        PR["<b>Provider</b> (B.1)<br/>Claude · OpenAI · Gemini · Apple on-device"]
+        SM["<b>Sensoriomotor</b> (B.6)<br/>tools tipadas con permisos · skills"]
+        RR["<b>Registro Real</b> (B.5)<br/>los fallos que insisten → reestructurar"]
+        SY[("<b>Capa Simbólica</b> (B.3)<br/>el historial: todo lo dicho")]
+        WM --> PR
+        PR -- "tool calls" --> SM
+        SM -- "resultado" --> PR
+        SM -. "fallo" .-> RR
+        PR --> SY
+    end
+
+    subgraph NOCHE["🌙 La noche — el sueño (B.7)"]
+        direction TB
+        CO["<b>Consolidator</b><br/>saliencia → destilado → escritura → reconsolidación → reflexión"]
+        BR[("<b>Brain</b><br/>memorias semánticas, episódicas, procedimentales")]
+        SE["<b>Self-model</b> (B.4)<br/>identidad con plasticidad<br/>p(n) = 0.05 + 0.95·e^(−n/30)"]
+        OM["<b>Modelo del Otro</b> (B.8)<br/>metas declaradas e inferidas"]
+        SK["<b>Skills</b> (B.6)<br/>automatizar / desautomatizar"]
+        CO --> BR
+        CO --> SE
+        CO --> OM
+        CO --> SK
+    end
+
+    DE["<b>Motor de deseo</b> (B.8)<br/>brecha entre metas y realidad → intenciones acotadas"]
+
+    U -- "habla" --> WM
+    PR -- "responde (nunca afirma lo que no ejecutó)" --> U
+    SY -- "lo vivido" --> CO
+    BR -. "recuerdo activado" .-> WM
+    SE -. "quién es" .-> WM
+    OM --> DE
+    DE -- "propuestas · seguimientos · recordatorios" --> U
+    SE -- "cambios de identidad<br/>(tras la infancia)" --> AP{{"Aprobación del dueño"}}
+    AP --> SE
+```
+
+Lo central: el modelo de lenguaje es **la dotación**, no la mente. Lo que hace de Anima *una* mente es el harness que decide qué entra al contexto, qué se recuerda, qué se olvida, quién es y qué desea — y la historia que tú le das. Detalle completo de cada subsistema en el [spec (doc 03)](docs/03-harness-mind-convergence.md).
+
+## Cómo piensa
+
+| Idea | En Anima |
+|---|---|
+| **El sueño consolida** (Kandel) | Cada noche, mientras el teléfono carga, un ciclo destila la conversación en memorias durables, reconsolida las viejas y reflexiona. |
+| **La plasticidad decae** | `p(n) = 0.05 + 0.95·e^(−n/30)`: la identidad se moldea libre al principio y se estabiliza con las noches; pasada la infancia, cambiar quién es exige tu aprobación. |
+| **El deseo del Otro** (Lacan) | Tus metas —declaradas o inferidas— motivan propuestas y seguimientos proactivos, acotados para no volverse ruido. |
+| **La gramática como estructura** (Chomsky) | Tools tipadas con permisos explícitos y skills que se aprenden con la práctica: lo que hace es verificable, no solo lo que dice. |
 
 ## Los documentos
 
@@ -36,6 +137,10 @@ Regla: los cambios al blueprint se hacen aquí (PR a este repo); los runtimes se
 - [x] `anima-ios` — track G (gafas Meta, DAT SDK 1.0)
 - [ ] `anima-ios` — widgets, CarPlay y App Store
 - [ ] `animad` — plan de implementación server (hermano del doc 04) + Fase 0
+
+## Licencia
+
+El blueprint (documentos, spec e investigación) está bajo **[Creative Commons Atribución 4.0 (CC BY 4.0)](LICENSE)**: puedes usarlo, adaptarlo y construir sobre él citando a Joshua Moreno / anima-mind. Los runtimes tienen su propia licencia: [`animad`](https://github.com/anima-mind/animad) (Apache 2.0) y [`anima-ios`](https://github.com/anima-mind/anima-ios) (PolyForm Noncommercial 1.0.0). **Anima** y su logo son marcas de Joshua Moreno; ninguna licencia otorga derechos sobre ellas.
 
 ---
 
