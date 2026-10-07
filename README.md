@@ -21,7 +21,7 @@ Léelos en orden si llegas de cero; el 03 es la referencia normativa.
 
 | Repo | Perfil | Estado |
 |---|---|---|
-| [`anima-ios`](https://github.com/anima-mind/anima-ios) | **Edge** — app iOS/Swift. Consolidación al cargar = sueño; el Otro = el dueño del teléfono. Gafas Meta opcionales como segundo cuerpo ([doc 05](docs/05-meta-glasses-plan.md)). | **Creado** — AnimaKit (SPM) con el invariante de plasticidad + CI verde. Fase 0 pendiente |
+| [`anima-ios`](https://github.com/anima-mind/anima-ios) | **Edge** — app iOS/Swift. Consolidación al cargar = sueño; el Otro = el dueño del teléfono. Gafas Meta opcionales como segundo cuerpo ([doc 05](docs/05-meta-glasses-plan.md)). | **En pruebas de campo** (TestFlight interno) — fases 0–4 del plan implementadas: conversación, memoria y sueño, identidad con plasticidad, deseo/metas, recordatorios y seguimientos proactivos, modo 100 % on-device (Apple Foundation Models) y gafas Meta |
 | [`animad`](https://github.com/anima-mind/animad) | **Server** — daemon Go y/o servicio REST. Brain compartido, capa intersubjetiva (§B.9). | **Creado** — mismo invariante con valores canónicos idénticos + CI verde. Plan server pendiente |
 
 Regla: los cambios al blueprint se hacen aquí (PR a este repo); los runtimes se actualizan contra él. La [matriz de portabilidad](docs/03-harness-mind-convergence.md) (§C.1) define qué es invariante entre runtimes y qué varía por perfil.
@@ -32,8 +32,9 @@ Regla: los cambios al blueprint se hacen aquí (PR a este repo); los runtimes se
 - [x] Plan de implementación edge/Swift (doc 04, revisado)
 - [x] Plan gafas Meta (doc 05 — opcional: la app funciona con o sin gafas)
 - [x] Repos de runtimes creados (públicos, CI verde): [anima-ios](https://github.com/anima-mind/anima-ios) · [animad](https://github.com/anima-mind/animad) — ambos arrancan por el invariante de plasticidad (§C.1) con valores canónicos idénticos en Swift y Go
-- [ ] `anima-ios` — Fase 0 (esqueleto que conversa)
-- [ ] `anima-ios` — track G (gafas, tras Fase 1)
+- [x] `anima-ios` — fases 0–4 (conversa, recuerda, duerme, desea) + capa proactiva + modo on-device
+- [x] `anima-ios` — track G (gafas Meta, DAT SDK 1.0)
+- [ ] `anima-ios` — widgets, CarPlay y App Store
 - [ ] `animad` — plan de implementación server (hermano del doc 04) + Fase 0
 
 ---
